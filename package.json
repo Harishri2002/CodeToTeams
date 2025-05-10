@@ -19,6 +19,7 @@
   ],
   "activationEvents": [
     "onCommand:extension.shareToTeams",
+    "onCommand:extension.teamsSignOut",
     "*"
   ],
   "main": "./extension.js",
@@ -27,6 +28,10 @@
       {
         "command": "extension.shareToTeams",
         "title": "Share to Teams"
+      },
+      {
+        "command": "extension.teamsSignOut",
+        "title": "Sign Out from Teams"
       }
     ],
     "menus": {
@@ -35,6 +40,12 @@
           "command": "extension.shareToTeams",
           "when": "editorHasSelection",
           "group": "navigation"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "extension.teamsSignOut",
+          "group": "Teams"
         }
       ]
     },
@@ -58,11 +69,6 @@
           "type": "boolean",
           "default": true,
           "description": "Include language identifier in the shared code blocks"
-        },
-        "shareToTeams.shortcutKey": {
-          "type": "string",
-          "default": "ctrl+shift+t",
-          "description": "Keyboard shortcut to trigger sharing (requires restart)"
         }
       }
     }
@@ -78,25 +84,25 @@
   "dependencies": {
     "@azure/msal-node": "^3.5.3",
     "@microsoft/microsoft-graph-client": "^3.0.7",
-    "axios": "^1.9.0",
-    "install": "^0.13.0",
-    "npm": "^11.3.0"
+    "axios": "^1.9.0"
   },
   "devDependencies": {
     "@types/node": "^18.11.9",
     "@types/vscode": "^1.60.0",
     "eslint": "^8.28.0",
+    "mocha": "^10.2.0",
+    "sinon": "^15.0.1",
     "vsce": "^2.15.0",
     "vscode-test": "^1.6.1"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/yourusername/vscode-teams-code-share.git"
+    "url": "git+https://github.com/harishri/vscode-teams-code-share.git"
   },
   "bugs": {
-    "url": "https://github.com/yourusername/vscode-teams-code-share/issues"
+    "url": "https://github.com/harishri/vscode-teams-code-share/issues"
   },
-  "homepage": "https://github.com/yourusername/vscode-teams-code-share#readme",
+  "homepage": "https://github.com/harishri/vscode-teams-code-share#readme",
   "license": "MIT",
-  "author": ""
+  "author": "Harishri"
 }

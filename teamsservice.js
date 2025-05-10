@@ -1,5 +1,6 @@
 const { Client } = require('@microsoft/microsoft-graph-client');
 const vscode = require('vscode');
+const axios = require('axios');
 
 /**
  * Get the user's Teams chats
@@ -14,6 +15,9 @@ async function getChats(accessToken) {
             }
         });
 
+        // First, check if the token is valid by getting the user profile
+        await client.api('/me').get();
+
         // Get chats with expanded members to show user names
         const response = await client
             .api('/me/chats')
@@ -24,17 +28,30 @@ async function getChats(accessToken) {
         return response.value;
     } catch (error) {
         console.error('Error getting Teams chats:', error);
-        const errorMessage = error.message || 'Unknown error';
-        const errorCode = error.statusCode || '';
         
-        // Handle common error cases
-        if (errorCode === 401 || errorCode === 403) {
-            throw new Error('Not authorized to access Teams chats. Please check permissions.');
-        } else if (errorCode === 404) {
-            throw new Error('Teams chat API not found. Are you using Microsoft Teams?');
-        } else {
-            throw new Error(`Failed to get Teams chats: ${errorMessage}`);
+        // If we get a 401 or 403, the token is invalid or doesn't have the right permissions
+        if (error.statusCode === 401 || error.statusCode === 403) {
+            throw new Error('Not authorized to access Teams chats. Please check permissions or sign out and try again.');
         }
+        
+        // Try a direct approach using axios as a fallback
+        try {
+            const response = await axios.get('https://graph.microsoft.com/v1.0/me/chats?$expand=members', {
+                headers: {
+                    'Authorization': `Bearer ${accessToken}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+            
+            if (response.data && response.data.value) {
+                return response.data.value;
+            }
+        } catch (axiosError) {
+            console.error('Axios fallback also failed:', axiosError);
+        }
+        
+        // If we reach here, both approaches failed
+        throw new Error('Failed to get Teams chats. Please ensure you have Microsoft Teams installed and are logged in.');
     }
 }
 
@@ -69,17 +86,32 @@ async function sendMessage(accessToken, chatId, content) {
         return response;
     } catch (error) {
         console.error('Error sending message to Teams:', error);
-        const errorMessage = error.message || 'Unknown error';
-        const errorCode = error.statusCode || '';
         
-        // Handle common error cases
-        if (errorCode === 401 || errorCode === 403) {
-            throw new Error('Not authorized to send messages. Please check permissions.');
-        } else if (errorCode === 404) {
-            throw new Error('Chat not found. The chat ID may be invalid.');
-        } else {
-            throw new Error(`Failed to send message: ${errorMessage}`);
+        // Try a direct approach using axios as a fallback
+        try {
+            const message = {
+                body: {
+                    contentType: 'text',
+                    content: content
+                }
+            };
+            
+            const response = await axios.post(`https://graph.microsoft.com/v1.0/chats/${chatId}/messages`, message, {
+                headers: {
+                    'Authorization': `Bearer ${accessToken}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+            
+            if (response.data) {
+                return response.data;
+            }
+        } catch (axiosError) {
+            console.error('Axios fallback also failed:', axiosError);
         }
+        
+        // If we reach here, both approaches failed
+        throw new Error('Failed to send message to Teams. Please try the fallback method.');
     }
 }
 
