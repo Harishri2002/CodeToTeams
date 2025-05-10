@@ -3,7 +3,7 @@
   "displayName": "Share Code to Teams",
   "description": "Share code snippets directly to Microsoft Teams from VS Code",
   "version": "0.1.0",
-  "publisher": "Harishri B R",
+  "publisher": "Harishri",
   "engines": {
     "vscode": "^1.60.0"
   },

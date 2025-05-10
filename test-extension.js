@@ -9,7 +9,7 @@ suite('Extension Test Suite', () => {
     vscode.window.showInformationMessage('Starting tests...');
 
     test('Extension should be present', () => {
-        assert.ok(vscode.extensions.getExtension('YourPublisherName.vscode-teams-code-share'));
+        assert.ok(vscode.extensions.getExtension('Harishri.CodeToTeams'));
     });
 
     test('Should register commands', async () => {
