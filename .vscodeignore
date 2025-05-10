@@ -1,0 +1,15 @@
+.vscode/**
+.vscode-test/**
+test/**
+.gitignore
+.github/**
+.yarnrc
+.vsix
+vsc-extension-quickstart.md
+**/node_modules/**
+**/.eslintrc.json
+**/.eslintignore
+**/.npmrc
+**/yarn.lock
+**/package-lock.json
+**/.DS_Store

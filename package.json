@@ -1,0 +1,99 @@
+{
+  "name": "CodeToTeams",
+  "displayName": "Share Code to Teams",
+  "description": "Share code snippets directly to Microsoft Teams from VS Code",
+  "version": "0.1.0",
+  "publisher": "Harishri B R",
+  "engines": {
+    "vscode": "^1.60.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "keywords": [
+    "teams",
+    "share",
+    "code",
+    "snippet",
+    "microsoft teams"
+  ],
+  "activationEvents": [
+    "onCommand:extension.shareToTeams",
+    "*"
+  ],
+  "main": "./extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "extension.shareToTeams",
+        "title": "Share to Teams"
+      }
+    ],
+    "menus": {
+      "editor/context": [
+        {
+          "command": "extension.shareToTeams",
+          "when": "editorHasSelection",
+          "group": "navigation"
+        }
+      ]
+    },
+    "keybindings": [
+      {
+        "command": "extension.shareToTeams",
+        "key": "ctrl+shift+t",
+        "mac": "cmd+shift+t",
+        "when": "editorHasSelection"
+      }
+    ],
+    "configuration": {
+      "title": "Share Code to Teams",
+      "properties": {
+        "shareToTeams.preferDirectApi": {
+          "type": "boolean",
+          "default": true,
+          "description": "Prefer direct API integration over deep linking"
+        },
+        "shareToTeams.includeLanguage": {
+          "type": "boolean",
+          "default": true,
+          "description": "Include language identifier in the shared code blocks"
+        },
+        "shareToTeams.shortcutKey": {
+          "type": "string",
+          "default": "ctrl+shift+t",
+          "description": "Keyboard shortcut to trigger sharing (requires restart)"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "lint": "eslint .",
+    "pretest": "npm run lint",
+    "test": "node ./test/runTest.js",
+    "vscode:prepublish": "npm run lint",
+    "package": "vsce package",
+    "publish": "vsce publish"
+  },
+  "dependencies": {
+    "@microsoft/microsoft-graph-client": "^3.0.7",
+    "axios": "^1.9.0"
+  },
+  "devDependencies": {
+    "@types/node": "^18.11.9",
+    "@types/vscode": "^1.60.0",
+    "eslint": "^8.28.0",
+    "vsce": "^2.15.0",
+    "vscode-test": "^1.6.1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yourusername/vscode-teams-code-share.git"
+  },
+  "bugs": {
+    "url": "https://github.com/yourusername/vscode-teams-code-share/issues"
+  },
+  "homepage": "https://github.com/yourusername/vscode-teams-code-share#readme",
+  "license": "MIT",
+  "author": ""
+}
