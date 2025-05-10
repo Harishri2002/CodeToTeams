@@ -8,10 +8,6 @@ const fs = require('fs');
 // Configuration for Microsoft Authentication Library
 const msalConfig = {
     auth: {
-        clientId: '9efad823-1989-4f38-951f-90762342f45e',
-        authority: 'https://login.microsoftonline.com/common',
-        clientSecret: 'UN18Q~uh7Zs27goTa0iJMWV8FufVEuukjoj8RaJB',
-        redirectUri: 'http://localhost:3000/auth/callback',
     },
     cache: {
         cacheLocation: 'localStorage', // This enables caching the token
