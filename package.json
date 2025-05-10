@@ -76,8 +76,11 @@
     "publish": "vsce publish"
   },
   "dependencies": {
+    "@azure/msal-node": "^3.5.3",
     "@microsoft/microsoft-graph-client": "^3.0.7",
-    "axios": "^1.9.0"
+    "axios": "^1.9.0",
+    "install": "^0.13.0",
+    "npm": "^11.3.0"
   },
   "devDependencies": {
     "@types/node": "^18.11.9",
