@@ -8,7 +8,6 @@ const fs = require('fs');
 // Configuration for Microsoft Authentication Library
 const msalConfig = {
     auth: {
-  
     },
     cache: {
         cacheLocation: 'localStorage',
@@ -18,8 +17,8 @@ const msalConfig = {
 const cca = new ConfidentialClientApplication(msalConfig);
 let tokenCachePath;
 
-// Required scopes for Microsoft Graph
-const requiredScopes = ['Chat.ReadWrite', 'User.Read', 'ChatMessage.Send'];
+// Required scopes for Microsoft Graph - using less privileged scopes
+const requiredScopes = ['User.Read', 'User.ReadBasic.All', 'People.Read'];
 
 /**
  * Initialize the authentication module
@@ -76,15 +75,8 @@ async function getSilentToken() {
             console.log('Requesting silent token with scopes:', silentRequest.scopes);
             const tokenResponse = await cca.acquireTokenSilent(silentRequest);
             if (tokenResponse && tokenResponse.accessToken) {
-                const tokenScopes = tokenResponse.scopes || [];
-                const missingScopes = requiredScopes.filter(scope => !tokenScopes.includes(scope));
-                if (missingScopes.length === 0) {
-                    console.log('Got token silently from cache with scopes:', tokenScopes);
-                    return tokenResponse.accessToken;
-                } else {
-                    console.log('Cached token missing required scopes:', missingScopes);
-                    return null;
-                }
+                console.log('Got token silently from cache with scopes:', tokenResponse.scopes);
+                return tokenResponse.accessToken;
             }
         }
         return null;
@@ -110,16 +102,19 @@ async function getAccessToken() {
         if (silentToken) {
             return silentToken;
         }
+        
         console.log('No valid cached token found, proceeding with interactive login');
         const authCodeUrlParameters = {
             scopes: requiredScopes,
             redirectUri: msalConfig.auth.redirectUri,
             prompt: 'consent', // Ensure all scopes are granted
         };
+        
         console.log('Requesting authorization code with scopes:', authCodeUrlParameters.scopes);
         const authUrl = await cca.getAuthCodeUrl(authCodeUrlParameters);
         console.log('Opening authentication URL:', authUrl);
         await vscode.env.openExternal(vscode.Uri.parse(authUrl));
+        
         const authCode = await new Promise((resolve, reject) => {
             const server = http.createServer((req, res) => {
                 const requestUrl = url.parse(req.url, true);
@@ -145,7 +140,7 @@ async function getAccessToken() {
                             <div class="container">
                                 <div class="icon">✓</div>
                                 <h1>Authentication Successful!</h1>
-                                <p>You've successfully authenticated with Microsoft Teams.</p>
+                                <p>You've successfully authenticated with Microsoft.</p>
                                 <a href="vscode://Harishri.CodeToTeams" class="button">Return to VS Code</a>
                             </div>
                             <script>
@@ -191,42 +186,42 @@ async function getAccessToken() {
                     server.close();
                 }
             });
+            
             server.listen(3000, () => {
                 console.log('Local server listening on port 3000 for auth callback...');
             });
+            
             server.on('error', (err) => {
                 reject(new Error(`Server error: ${err.message}`));
             });
         });
+        
         console.log('Acquiring token with authorization code, requesting scopes:', requiredScopes);
         const tokenResponse = await cca.acquireTokenByCode({
             code: authCode,
             scopes: requiredScopes,
             redirectUri: msalConfig.auth.redirectUri,
         });
+        
         if (tokenResponse && tokenResponse.accessToken) {
             console.log('Access token retrieved successfully with scopes:', tokenResponse.scopes);
-            console.log('Full token response for debugging:', {
-                scopes: tokenResponse.scopes,
-                tenantId: tokenResponse.tenantId,
-                expiresOn: tokenResponse.expiresOn,
-                error: tokenResponse.error,
-                errorDescription: tokenResponse.errorDescription
-            });
             await saveTokenCache();
             return tokenResponse.accessToken;
         }
+        
         throw new Error('Failed to retrieve access token');
     } catch (error) {
         console.error('Authentication error:', error);
         let errorMessage = `Authentication failed: ${error.message}`;
+        
         if (error.errorCode === 'access_denied') {
-            errorMessage = 'Authentication failed: Access denied. Please check your Microsoft Teams permissions or ensure admin consent is granted for Chat.ReadWrite and ChatMessage.Send.';
+            errorMessage = 'Authentication failed: Access denied. Please check your Microsoft account permissions.';
         } else if (error.errorCode === 'invalid_grant') {
             errorMessage = 'Authentication failed: Invalid token. Please sign out and try again.';
         } else if (error.errorCode === 'consent_required') {
-            errorMessage = 'Authentication failed: Consent required for Chat.ReadWrite and ChatMessage.Send. Please sign out, re-authenticate, and grant consent.';
+            errorMessage = 'Authentication failed: Consent required. Please sign out, re-authenticate, and grant consent.';
         }
+        
         vscode.window.showErrorMessage(errorMessage);
         return null;
     }
@@ -245,7 +240,7 @@ async function signOut() {
             fs.unlinkSync(tokenCachePath);
         }
         console.log('Signed out successfully');
-        vscode.window.showInformationMessage('Signed out from Microsoft Teams');
+        vscode.window.showInformationMessage('Signed out from Microsoft account');
     } catch (error) {
         console.error('Error signing out:', error);
         vscode.window.showErrorMessage(`Failed to sign out: ${error.message}`);
