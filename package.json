@@ -8,14 +8,17 @@
     "vscode": "^1.60.0"
   },
   "categories": [
-    "Other"
+    "Other",
+    "Collaboration"
   ],
   "keywords": [
     "teams",
     "share",
     "code",
     "snippet",
-    "microsoft teams"
+    "microsoft teams",
+    "collaboration",
+    "office"
   ],
   "activationEvents": [
     "onCommand:extension.shareToTeams",
@@ -44,6 +47,11 @@
       ],
       "commandPalette": [
         {
+          "command": "extension.shareToTeams",
+          "when": "editorHasSelection",
+          "group": "Teams"
+        },
+        {
           "command": "extension.teamsSignOut",
           "group": "Teams"
         }
@@ -69,6 +77,24 @@
           "type": "boolean",
           "default": true,
           "description": "Include language identifier in the shared code blocks"
+        },
+        "shareToTeams.includeFileName": {
+          "type": "boolean",
+          "default": true,
+          "description": "Include file name in shared code blocks"
+        },
+        "shareToTeams.defaultRecipients": {
+          "type": "array",
+          "default": [],
+          "description": "Default recipients for sharing (email addresses)",
+          "items": {
+            "type": "string"
+          }
+        },
+        "shareToTeams.cacheLifetime": {
+          "type": "number",
+          "default": 30,
+          "description": "Number of days to keep authentication cache before requiring re-login"
         }
       }
     }
@@ -84,7 +110,9 @@
   "dependencies": {
     "@azure/msal-node": "^3.5.3",
     "@microsoft/microsoft-graph-client": "^3.0.7",
-    "axios": "^1.9.0"
+    "axios": "^1.9.0",
+    "isomorphic-fetch": "^3.0.0",
+    "node-fetch": "^2.6.9"
   },
   "devDependencies": {
     "@types/node": "^18.11.9",
