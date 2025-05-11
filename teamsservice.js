@@ -15,43 +15,43 @@ async function getChats(accessToken) {
             }
         });
 
-        // First, check if the token is valid by getting the user profile
-        await client.api('/me').get();
+        // Verify token by getting user profile
+        console.log('Validating token by fetching user profile...');
+        const userProfile = await client.api('/me').get();
+        console.log('User profile fetched successfully:', userProfile.id);
 
-        // Get chats with expanded members to show user names
+        // Get chats with expanded members
+        console.log('Fetching Teams chats with expanded members...');
         const response = await client
             .api('/me/chats')
             .expand('members')
-            .top(50) // Adjust based on expected number of chats
+            .top(50)
             .get();
 
+        console.log('Teams chats fetched successfully:', response.value.length, 'chats found');
         return response.value;
     } catch (error) {
         console.error('Error getting Teams chats:', error);
-        
-        // If we get a 401 or 403, the token is invalid or doesn't have the right permissions
         if (error.statusCode === 401 || error.statusCode === 403) {
-            throw new Error('Not authorized to access Teams chats. Please check permissions or sign out and try again.');
+            console.error('Authorization error details:', error.body);
+            throw new Error('Not authorized to access Teams chats. Please sign out and try again or check permissions in Azure AD.');
         }
-        
-        // Try a direct approach using axios as a fallback
         try {
+            console.log('Falling back to axios for fetching chats...');
             const response = await axios.get('https://graph.microsoft.com/v1.0/me/chats?$expand=members', {
                 headers: {
                     'Authorization': `Bearer ${accessToken}`,
                     'Content-Type': 'application/json'
                 }
             });
-            
             if (response.data && response.data.value) {
+                console.log('Teams chats fetched via axios fallback:', response.data.value.length, 'chats found');
                 return response.data.value;
             }
         } catch (axiosError) {
             console.error('Axios fallback also failed:', axiosError);
         }
-        
-        // If we reach here, both approaches failed
-        throw new Error('Failed to get Teams chats. Please ensure you have Microsoft Teams installed and are logged in.');
+        throw new Error('Failed to get Teams chats. Ensure Microsoft Teams is installed and you are logged in.');
     }
 }
 
@@ -70,7 +70,6 @@ async function sendMessage(accessToken, chatId, content) {
             }
         });
 
-        // Create message payload
         const message = {
             body: {
                 contentType: 'text',
@@ -78,16 +77,15 @@ async function sendMessage(accessToken, chatId, content) {
             }
         };
 
-        // Send the message
+        console.log('Sending message to chat ID:', chatId);
         const response = await client
             .api(`/chats/${chatId}/messages`)
             .post(message);
 
+        console.log('Message sent successfully:', response.id);
         return response;
     } catch (error) {
         console.error('Error sending message to Teams:', error);
-        
-        // Try a direct approach using axios as a fallback
         try {
             const message = {
                 body: {
@@ -95,23 +93,21 @@ async function sendMessage(accessToken, chatId, content) {
                     content: content
                 }
             };
-            
+            console.log('Falling back to axios for sending message...');
             const response = await axios.post(`https://graph.microsoft.com/v1.0/chats/${chatId}/messages`, message, {
                 headers: {
                     'Authorization': `Bearer ${accessToken}`,
                     'Content-Type': 'application/json'
                 }
             });
-            
             if (response.data) {
+                console.log('Message sent via axios fallback:', response.data.id);
                 return response.data;
             }
         } catch (axiosError) {
             console.error('Axios fallback also failed:', axiosError);
         }
-        
-        // If we reach here, both approaches failed
-        throw new Error('Failed to send message to Teams. Please try the fallback method.');
+        throw new Error('Failed to send message to Teams. Try the fallback method.');
     }
 }
 

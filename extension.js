@@ -8,14 +8,10 @@ const teamsService = require('./teamsService');
  */
 function activate(context) {
     console.log('Activating "Share Code to Teams" extension');
-
-    // Initialize authentication module with context
     auth.initialize(context);
 
-    // Register the command to share code to Teams
     let shareCommand = vscode.commands.registerCommand('extension.shareToTeams', async function () {
         try {
-            // Check if text is selected
             const editor = vscode.window.activeTextEditor;
             if (!editor) {
                 vscode.window.showErrorMessage('No active editor found');
@@ -28,50 +24,37 @@ function activate(context) {
                 return;
             }
 
-            // Get the selected text
             const selectedText = editor.document.getText(selection);
             if (!selectedText) {
                 vscode.window.showErrorMessage('Selected text is empty');
                 return;
             }
 
-            // Format the code snippet
             const languageId = editor.document.languageId;
-            const includeLanguage = vscode.workspace.getConfiguration('shareToTeams').get('includeLanguage');
+            const includeLanguage = vscode.workspace.getConfiguration('shareToTeams').get('includeLanguage', true);
             const formattedText = formatCodeSnippet(selectedText, includeLanguage ? languageId : null);
 
-            // Show progress indicator
             await vscode.window.withProgress({
                 location: vscode.ProgressLocation.Notification,
                 title: "Sharing code to Teams",
                 cancellable: false
             }, async (progress) => {
                 progress.report({ message: "Authenticating..." });
-                
                 try {
-                    // First try direct API integration
                     const directShareResult = await shareViaGraphApi(formattedText, context, progress);
-                    
                     if (directShareResult) {
-                        // Success - API share worked
                         return;
                     }
-                    
-                    // If direct API fails, use deep linking as fallback
                     progress.report({ message: "Using Teams deep link..." });
-                    shareViaDeepLink(formattedText);
-                    
+                    await shareViaDeepLink(formattedText);
                 } catch (error) {
                     console.error('Error sharing:', error);
-                    
-                    // Show error and offer direct Teams link as fallback
                     const fallback = await vscode.window.showErrorMessage(
                         `Error: ${error.message}. Use Teams deep link instead?`,
                         'Yes', 'No'
                     );
-                    
                     if (fallback === 'Yes') {
-                        shareViaDeepLink(formattedText);
+                        await shareViaDeepLink(formattedText);
                     }
                 }
             });
@@ -81,7 +64,6 @@ function activate(context) {
         }
     });
 
-    // Register a command to sign out
     let signOutCommand = vscode.commands.registerCommand('extension.teamsSignOut', async function() {
         await auth.signOut();
     });
@@ -108,7 +90,6 @@ function formatCodeSnippet(text, languageId) {
  * @returns {Promise<boolean>} - True if successful, false otherwise
  */
 async function shareViaGraphApi(formattedText, context, progress) {
-    // Get access token
     progress.report({ message: "Getting access token..." });
     const accessToken = await auth.getAccessToken();
     
@@ -116,37 +97,31 @@ async function shareViaGraphApi(formattedText, context, progress) {
         throw new Error('Authentication failed');
     }
 
-    // Get list of chats
     progress.report({ message: "Fetching Teams chats..." });
     const chats = await teamsService.getChats(accessToken);
     
     if (!chats || chats.length === 0) {
-        throw new Error('No Teams chats found');
+        throw new Error('No Teams chats found. Ensure you have active chats in Microsoft Teams.');
     }
 
-    // Prepare chat items for selection
     const chatItems = chats.map(chat => ({
         label: getChatLabel(chat),
         id: chat.id,
         description: getChatDescription(chat)
     }));
 
-    // Show quick pick to select a chat
     const selectedChat = await vscode.window.showQuickPick(chatItems, {
         placeHolder: 'Select a Teams chat to share the code',
         matchOnDescription: true
     });
 
     if (!selectedChat) {
-        // User cancelled the selection
-        return false;
+        return false; // User cancelled
     }
 
-    // Send the message
     progress.report({ message: `Sending message to ${selectedChat.label}...` });
     await teamsService.sendMessage(accessToken, selectedChat.id, formattedText);
     
-    // Show success message
     vscode.window.showInformationMessage(`Code shared to Teams chat "${selectedChat.label}" successfully!`);
     return true;
 }
@@ -158,17 +133,14 @@ async function shareViaGraphApi(formattedText, context, progress) {
  */
 function getChatLabel(chat) {
     if (chat.topic) {
-        return chat.topic; // Group chat with topic
+        return chat.topic; // Group chat
     }
-    
-    // Try to find the other person in a one-on-one chat
     if (chat.members && chat.members.length > 0) {
         const otherMembers = chat.members.filter(m => !m.displayName.includes('(You)'));
         if (otherMembers.length > 0) {
             return otherMembers.map(m => m.displayName).join(', ');
         }
     }
-    
     return 'Chat';
 }
 
@@ -179,10 +151,8 @@ function getChatLabel(chat) {
  */
 function getChatDescription(chat) {
     if (chat.topic) {
-        // For group chats, show the number of members
         return chat.members ? `${chat.members.length} members` : 'Group chat';
     }
-    
     return 'Direct message';
 }
 
@@ -190,18 +160,20 @@ function getChatDescription(chat) {
  * Share code via Teams deep link
  * @param {string} formattedText - Formatted code block
  */
-function shareViaDeepLink(formattedText) {
+async function shareViaDeepLink(formattedText) {
     const encodedMessage = encodeURIComponent(formattedText);
     const deepLink = `msteams://teams.microsoft.com/l/chat/0/0?message=${encodedMessage}`;
-    
-    vscode.env.openExternal(vscode.Uri.parse(deepLink));
-    vscode.window.showInformationMessage('Teams opened. Please select recipients to share your code.');
+    await vscode.env.openExternal(vscode.Uri.parse(deepLink));
+    vscode.window.showInformationMessage('Microsoft Teams opened. Please select recipients to share your code.');
 }
 
+/**
+ * Deactivates the extension
+ */
 function deactivate() {}
 
 module.exports = {
     activate,
     deactivate,
-    formatCodeSnippet // Export for testing
+    formatCodeSnippet
 };
