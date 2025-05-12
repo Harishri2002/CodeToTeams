@@ -79,8 +79,6 @@ async function getSilentToken() {
             if (tokenResponse && tokenResponse.accessToken) {
                 console.log('Got token silently from cache with scopes:', tokenResponse.scopes);
                 return tokenResponse.accessToken;
-                console.log('Got token silently from cache with scopes:', tokenResponse.scopes);
-                return tokenResponse.accessToken;
             }
         }
         return null;
@@ -107,7 +105,6 @@ async function getAccessToken() {
         if (silentToken) {
             return silentToken;
         }
-        
         
         console.log('No valid cached token found, proceeding with interactive login');
         
@@ -292,7 +289,6 @@ async function signOut() {
             fs.unlinkSync(tokenCachePath);
         }
         console.log('Signed out successfully');
-        vscode.window.showInformationMessage('Signed out from Microsoft account');
         vscode.window.showInformationMessage('Signed out from Microsoft account');
     } catch (error) {
         console.error('Error signing out:', error);
