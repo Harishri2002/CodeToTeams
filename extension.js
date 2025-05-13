@@ -88,6 +88,7 @@ function activate(context) {
         // Clear cache when signing out
         recipientsCache = null;
         lastFetchTime = null;
+        vscode.window.showInformationMessage('Signed out from Microsoft account');
     });
 
     let addManualRecipientCommand = vscode.commands.registerCommand('extension.addManualTeamsRecipient', async function() {
@@ -119,7 +120,55 @@ function activate(context) {
         }
     });
 
-    context.subscriptions.push(shareCommand, signOutCommand, addManualRecipientCommand);
+    // Add manage recipients command
+    let manageRecipientsCommand = vscode.commands.registerCommand('extension.manageTeamsRecipients', async function() {
+        const config = vscode.workspace.getConfiguration('shareToTeams');
+        const manualRecipients = config.get('manualRecipients', []);
+        
+        if (manualRecipients.length === 0) {
+            vscode.window.showInformationMessage('No manual recipients found. Add some first with "Add Teams Recipient" command.');
+            return;
+        }
+        
+        // Create QuickPick items for each manual recipient
+        const items = manualRecipients.map(email => ({
+            label: email,
+            email: email
+        }));
+        
+        const quickPick = vscode.window.createQuickPick();
+        quickPick.title = "Manage Teams Recipients";
+        quickPick.placeholder = "Select recipients to remove";
+        quickPick.items = items;
+        quickPick.canSelectMany = true;
+        
+        // Return promise that resolves when selection is made
+        const selectedToRemove = await new Promise((resolve) => {
+            quickPick.onDidAccept(() => {
+                const selected = quickPick.selectedItems.map(item => item.email);
+                quickPick.hide();
+                resolve(selected);
+            });
+            
+            quickPick.onDidHide(() => {
+                resolve([]);
+            });
+            
+            quickPick.show();
+        });
+        
+        if (selectedToRemove.length > 0) {
+            // Remove selected recipients
+            const updatedRecipients = manualRecipients.filter(email => !selectedToRemove.includes(email));
+            await config.update('manualRecipients', updatedRecipients, vscode.ConfigurationTarget.Global);
+            vscode.window.showInformationMessage(`Removed ${selectedToRemove.length} recipient(s)`);
+            
+            // Clear cache
+            recipientsCache = null;
+        }
+    });
+
+    context.subscriptions.push(shareCommand, signOutCommand, addManualRecipientCommand, manageRecipientsCommand);
 }
 
 /**
@@ -135,39 +184,59 @@ async function getRecipients(accessToken) {
         return recipientsCache;
     }
     
-    // Fetch fresh data
-    const apiRecipients = await contactsService.getPotentialRecipients(accessToken);
-    
-    // Add manual recipients from settings
-    const config = vscode.workspace.getConfiguration('shareToTeams');
-    const manualRecipients = config.get('manualRecipients', []);
-    
-    // Combine API recipients with manual recipients
-    const emailMap = new Map();
-    
-    // Add API recipients
-    apiRecipients.forEach(recipient => {
-        emailMap.set(recipient.email.toLowerCase(), recipient);
-    });
-    
-    // Add manual recipients
-    manualRecipients.forEach(email => {
-        const lowerEmail = email.toLowerCase();
-        if (!emailMap.has(lowerEmail)) {
-            emailMap.set(lowerEmail, {
-                id: `manual-${lowerEmail}`,
+    try {
+        // Fetch fresh data
+        const apiRecipients = await contactsService.getPotentialRecipients(accessToken);
+        
+        // Add manual recipients from settings
+        const config = vscode.workspace.getConfiguration('shareToTeams');
+        const manualRecipients = config.get('manualRecipients', []);
+        
+        // Combine API recipients with manual recipients
+        const emailMap = new Map();
+        
+        // Add API recipients
+        apiRecipients.forEach(recipient => {
+            emailMap.set(recipient.email.toLowerCase(), recipient);
+        });
+        
+        // Add manual recipients
+        manualRecipients.forEach(email => {
+            const lowerEmail = email.toLowerCase();
+            if (!emailMap.has(lowerEmail)) {
+                emailMap.set(lowerEmail, {
+                    id: `manual-${lowerEmail}`,
+                    displayName: email,
+                    email: email,
+                    isManual: true
+                });
+            }
+        });
+        
+        // Update cache
+        recipientsCache = Array.from(emailMap.values());
+        lastFetchTime = now;
+        
+        return recipientsCache;
+    } catch (error) {
+        console.error('Error fetching recipients:', error);
+        
+        // If we have any manual recipients, return those as fallback
+        const config = vscode.workspace.getConfiguration('shareToTeams');
+        const manualRecipients = config.get('manualRecipients', []);
+        
+        if (manualRecipients.length > 0) {
+            return manualRecipients.map(email => ({
+                id: `manual-${email.toLowerCase()}`,
                 displayName: email,
                 email: email,
                 isManual: true
-            });
+            }));
         }
-    });
-    
-    // Update cache
-    recipientsCache = Array.from(emailMap.values());
-    lastFetchTime = now;
-    
-    return recipientsCache;
+        
+        // Re-throw the error if we have no fallback
+        throw error;
+    }
 }
 
 /**

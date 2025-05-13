@@ -19,8 +19,9 @@ const cca = new ConfidentialClientApplication(msalConfig);
 let tokenCachePath;
 
 // Required scopes for Microsoft Graph
-// Adding offline_access to get refresh tokens and ensure longer-lasting access
-const requiredScopes = ['User.Read', 'User.ReadBasic.All', 'People.Read', 'offline_access'];
+// Changed from User.ReadBasic.All to Contacts.Read
+// Also includes offline_access to get refresh tokens
+const requiredScopes = ['User.Read', 'Contacts.Read', 'People.Read', 'offline_access'];
 
 /**
  * Initialize the authentication module
@@ -95,7 +96,7 @@ async function getSilentToken() {
 }
 
 /**
- * Try both organizations and consumers endpoints
+ * Get access token supporting both organization and personal accounts
  * @returns {Promise<string|null>} Access token or null if authentication fails
  */
 async function getAccessToken() {
@@ -108,26 +109,12 @@ async function getAccessToken() {
         
         console.log('No valid cached token found, proceeding with interactive login');
         
-        // Try the organizations endpoint first
-        try {
-            vscode.window.showInformationMessage('Signing in with your Microsoft work or school account...');
-            const token = await loginWithAuthority('https://login.microsoftonline.com/organizations');
-            if (token) return token;
-        } catch (orgError) {
-            console.log('Organizations authority login failed, trying consumers:', orgError.message);
-            vscode.window.showInformationMessage('Work/school account login unsuccessful, trying personal account...');
-        }
+        // Use common endpoint to support both personal and work accounts
+        vscode.window.showInformationMessage('Signing in with your Microsoft account...');
+        const token = await loginWithAuthority('https://login.microsoftonline.com/common');
+        if (token) return token;
         
-        // If organizations fails, try consumers endpoint
-        try {
-            const token = await loginWithAuthority('https://login.microsoftonline.com/consumers');
-            if (token) return token;
-        } catch (consumerError) {
-            console.log('Consumers authority login failed:', consumerError.message);
-        }
-        
-        // If both fail, show comprehensive error
-        throw new Error('Authentication failed with both work/school and personal accounts. Try signing out and in again with a different account.');
+        throw new Error('Authentication failed. Please try again or check your account permissions.');
         
     } catch (error) {
         console.error('Authentication error:', error);
@@ -147,7 +134,7 @@ async function getAccessToken() {
 }
 
 /**
- * Attempt to login with a specific authority
+ * Login with a specific authority
  * @param {string} authority - The authority URL to use
  * @returns {Promise<string|null>} - Access token if successful
  */
@@ -166,7 +153,7 @@ async function loginWithAuthority(authority) {
     const authCodeUrlParameters = {
         scopes: requiredScopes,
         redirectUri: msalConfig.auth.redirectUri,
-        prompt: 'consent', // Force consent dialog to ensure all permissions are granted
+        prompt: 'select_account', // Allow user to choose account
     };
     
     console.log(`Requesting authorization code with ${authority} and scopes:`, authCodeUrlParameters.scopes);
